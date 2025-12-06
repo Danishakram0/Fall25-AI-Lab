@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Prediction System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Diabetes Prediction System</h1>
+            <p>Enter patient information to predict diabetes risk</p>
+        </div>
+
+        <div class="form-container">
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label for="pregnancies">Pregnancies:</label>
+                    <input type="number" id="pregnancies" name="pregnancies" 
+                           min="0" max="20" step="1" required 
+                           placeholder="Number of pregnancies (e.g., 0-17)">
+                    <small>Number of times pregnant</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="glucose">Glucose Level (mg/dL):</label>
+                    <input type="number" id="glucose" name="glucose" 
+                           min="0" max="300" step="1" required 
+                           placeholder="Plasma glucose concentration (e.g., 70-200)">
+                    <small>2-hour plasma glucose concentration in oral glucose tolerance test</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="blood_pressure">Blood Pressure (mm Hg):</label>
+                    <input type="number" id="blood_pressure" name="blood_pressure" 
+                           min="0" max="200" step="1" required 
+                           placeholder="Diastolic blood pressure (e.g., 60-120)">
+                    <small>Diastolic blood pressure (mm Hg)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="skin_thickness">Skin Thickness (mm):</label>
+                    <input type="number" id="skin_thickness" name="skin_thickness" 
+                           min="0" max="100" step="1" required 
+                           placeholder="Triceps skin fold thickness (e.g., 10-50)">
+                    <small>Triceps skin fold thickness (mm)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="insulin">Insulin (μU/mL):</label>
+                    <input type="number" id="insulin" name="insulin" 
+                           min="0" max="900" step="1" required 
+                           placeholder="2-hour serum insulin (e.g., 0-846)">
+                    <small>2-hour serum insulin (μU/mL)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="diabetes_pedigree">Diabetes Pedigree Function:</label>
+                    <input type="number" id="diabetes_pedigree" name="diabetes_pedigree" 
+                           min="0" max="3" step="0.001" required 
+                           placeholder="Diabetes pedigree function (e.g., 0.078-2.42)">
+                    <small>Diabetes pedigree function (genetic influence)</small>
+                </div>
+
+                <button type="submit" class="btn-predict">
+                    <span>Predict Diabetes Risk</span>
+                </button>
+            </form>
+        </div>
+
+        <div id="result" class="result-container" style="display: none;">
+            <div class="result-content">
+                <h2>Prediction Result</h2>
+                <div id="resultDetails"></div>
+            </div>
+        </div>
+
+        <div id="error" class="error-container" style="display: none;">
+            <div class="error-content">
+                <h3>Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const submitButton = form.querySelector('button[type="submit"]');
+            
+            // Hide previous results
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span>Predicting...</span>';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Display result
+                    const resultDetails = document.getElementById('resultDetails');
+                    const predictionClass = data.prediction === 1 ? 'diabetic' : 'non-diabetic';
+                    
+                    resultDetails.innerHTML = `
+                        <div class="prediction-box ${predictionClass}">
+                            <div class="prediction-icon">${data.prediction === 1 ? '⚠️' : '✅'}</div>
+                            <div class="prediction-text">
+                                <h3>${data.prediction_text}</h3>
+                                ${data.confidence !== 'N/A' ? `<p>Confidence: ${data.confidence}</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="input-summary">
+                            <h4>Input Summary:</h4>
+                            <ul>
+                                <li><strong>Pregnancies:</strong> ${formData.get('pregnancies')}</li>
+                                <li><strong>Glucose:</strong> ${formData.get('glucose')} mg/dL</li>
+                                <li><strong>Blood Pressure:</strong> ${formData.get('blood_pressure')} mm Hg</li>
+                                <li><strong>Skin Thickness:</strong> ${formData.get('skin_thickness')} mm</li>
+                                <li><strong>Insulin:</strong> ${formData.get('insulin')} μU/mL</li>
+                                <li><strong>Diabetes Pedigree:</strong> ${formData.get('diabetes_pedigree')}</li>
+                            </ul>
+                        </div>
+                    `;
+                    
+                    resultDiv.style.display = 'block';
+                    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    // Display error
+                    document.getElementById('errorMessage').textContent = data.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Failed to connect to the server. Please try again.';
+                errorDiv.style.display = 'block';
+            } finally {
+                // Reset button
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<span>Predict Diabetes Risk</span>';
+            }
+        });
+    </script>
+</body>
+</html>
